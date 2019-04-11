@@ -1,0 +1,275 @@
+---
+title: "Running simulation studies in R - an introductory tutorial"
+author: "[Jonathan Bartlett](https://thestatsgeek.com)"
+date: "11 April 2019"
+output:
+  html_document:
+    toc: true
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+# Introduction
+
+In this tutorial we will learn about how to setup and run a simulation study using R. The tutorial draws heavily on the 2019 Statistics in Medicine paper `Using simulation studies to evaluate statistical methods' by Morris, White and Crowther. The paper can be freely accessed here: https://doi.org/10.1002/sim.8086 and we recommend you read it for more information.
+
+As Morris _et al_ describe, simulation studies can be useful for assessing statistical methods for a number of reasons, including:
+
+* to check analytical results which imply that a method should have a certain behaviour, to support the analytical results' validity 
+* to examine the finite sample performance of a method for which only large sample (asymptotic) results exist (e.g. maximum likelihood in general)
+* to examine the performance of a method when some of its assumptions are violated
+* to compare the performance of different statistical methods under different conditions
+
+# Planning a simulation study
+
+Morris _et al_ give a detailed description of the key elements that should be considered when planning a simulation study. In the interests of brevity here we summarise these at a very high level:
+
+* what are the aims of the study? Which statistical properties are you interested in assessing? e.g. bias of parameter estimates, variability/efficiency, confidence interval coverage
+* how will you simulate data. i.e. what `data generating mechanisms' will you use? How many simulations will you perform?
+* which statistical methods will you apply to each simulated dataset?
+* how will you quantify the performance of the different methods - these measures will be tied to the aims
+
+For much more in depth discussion of the planning side, please see the Morris _at al_ paper.
+
+```{r, echo=FALSE}
+set.seed(1234)
+```
+
+# A very simple simulation study
+
+Before delving into more details, we will setup an initial simple simulation study. We will perform simulations for linear regression, where we know from theory what the statistical properties of the ordinary least squares estimator are. The following code performs our simulation study. After storing values for the number of simulations to perform, the sample size, and an array to store estimates, we then use a for loop to repeatedly simulate data, analyse the data, and store the resulting estimates.
+
+**Read through the following code and check you understand it.**
+
+```{r}
+#specify number of simulations to perform
+nSim <- 1000
+#specify sample size of each simulation
+n <- 20
+
+#set up an array to store parameter estimates
+estArray <- array(0, dim=c(nSim,2))
+
+for (i in 1:nSim) {
+  #simulate a binary covariate x
+  x <- rbinom(n=n, size=1, prob=0.5)
+  #simulate outcome y
+  y <- 1 + 2*x + rnorm(n, mean=0, sd=3)
+  
+  #analyse simulated data by linear regression
+  fitmod <- lm(y~x)
+  #store estimated coefficients in estArray
+  estArray[i,] <- coefficients(fitmod)
+}
+```
+
+The results of our simulation study are stored in the `estArray`. We now need to analyse these to try and draw some conclusions about the ordinary least squares estimator(s) of the two regression coefficeints, the intercept and slope. First we will examine the mean of the estimates of each:
+```{r}
+colMeans(estArray)
+```
+The ordinary least squares estimators are unbiased, so these means should be close to the respective true values of the intercept and slope. From the line of code where we create `y`, we can see that the true intercept is 1 while the true slope is 2. It is thus re-assuring that the average of the estimates of these two parameters are reasonably close to their respective true values. How close should we expect them to be? To judge this we must assess the amount of simulation or Monte-Carlo error, which we will return to shortly.
+
+We can also examine other properties of the estimator. For example, theory says that if the residual errors are normally distributed, the ordinary least squares estimators should be normally distributed in repeated samples. We can informally assess this visually by plotting histograms of the two estimators:
+```{r}
+hist(estArray[,1], main='Histogram of intercept estimates')
+hist(estArray[,1], main='Histogram of slope estimates')
+```
+
+# Random number seeds
+
+**Copy the code used to simulate and analyse the data above into R, and run it for yourself. Do your means for the two estimators match those shown above?**
+
+It is highly likely that your means will differ to those shown above. This is because we did not set the value of R's random number seed. Computers can generate pseudo random numbers that for all intents and purposes perform as if they were truly random. A simple way of thinking about how this is performed is that R has a long (extremely long!) list of numbers. When you open R, R (somehow) picks a starting position in this long list. If you then run code which asks for random numbers, like `rnorm()`, it will give you the numbers from its very long list, starting with the one listed at the current seed. If you close R, re-open it, and run the same code, you will get a different numbers.
+
+When performing analyses that involve random number generation, it is usually desirable to set the seed to some (random!) value. Setting the seed means you or others should be able to exactly reproduce your results. Simulation studies obviously involve random numbers, but quite a few statistical methods involve random numbers, such as bootstrapping, multiple imputation for missing data, and MCMC algorithms.
+
+To set the seed in R, use the `set.seed()` function. This takes a single integer as its argument to set the random number seed. You should set the seed once at the top of your simulation code and then not set it again (see also comments later on parallel computing). If you repeatedly set the seed you could end up with some very undesirable (non-random) results. For example, if you set the seed to the same value inside the for loop in our code above, you would get the same 'random' data in `x` and `y` in every iteration!
+
+**Add the line `set.seed(1234)` to the top of your code and re-run the simulation study. Compare the estimator means to those shown earlier in this document.**
+
+You should find that you obtain identical means to those shown earlier. This is because I did in fact set the seed to 1234, but this code was hidden from this document. Morris _et al_'s general advice is to set the seed once at the start, and then not again.
+
+# Monte-Carlo error
+
+We now return to the question of simulation or Monte-Carlo error in our estimates. The mean of each of the two coefficients was the 'sample' mean of 1,000 estimates. We can estimate the standard error of the slope estimates by calculating an estimate of the standard deviation of the estimates and dividing by `sqrt(nSim)`:
+```{r}
+sd(estArray[,2]/sqrt(nSim))
+```
+Provided `nSim` is reasonably large, even if the estimator is not normally distributed (which here it is), by virtue of the central limit theorem we can construct a 95\% confidence interval for the true value that the estimator is unbiasedly estimating by the sample mean plus or minus 1.96 standard errors:
+```{r}
+c(mean(estArray[,2]) - 1.96*sd(estArray[,2]/sqrt(nSim)), mean(estArray[,2]) + 1.96*sd(estArray[,2]/sqrt(nSim)))
+```
+This confidence interval includes the true value of 2, but the interval is quite wide, so we cannot really be that confident on the basis of just these simulation results that the estimator is unbiased. If we wanted more convincing evidence, we should increase `nSim`, and possibly also use a 99\% confidence interval.
+
+**Add the preceding lines which calculate the 95\% confidence interval for the slope parameter, and re-run your simulation study with `nSim <- 10000`.**
+
+Re-running with `nSim <- 10000` and a seed of 1234, we obtain:
+```{r}
+set.seed(1234)
+nSim <- 10000
+#set up an array to store parameter estimates
+estArray <- array(0, dim=c(nSim,2))
+
+for (i in 1:nSim) {
+  #simulate a binary covariate x
+  x <- rbinom(n=n, size=1, prob=0.5)
+  #simulate outcome y
+  y <- 1 + 2*x + rnorm(n, mean=0, sd=3)
+  
+  #analyse simulated data by linear regression
+  fitmod <- lm(y~x)
+  #store estimated coefficients in estArray
+  estArray[i,] <- coefficients(fitmod)
+}
+
+c(mean(estArray[,2]) - 1.96*sd(estArray[,2]/sqrt(nSim)), mean(estArray[,2]) + 1.96*sd(estArray[,2]/sqrt(nSim)))
+```
+
+Our confidence interval is now (as it should be) narrower, and happily includes the value of 2. We have stronger evidence supporting that the slope estimator is unbiased.
+
+# Confidence interval coverage
+
+It is important to emphasize that the confidence interval we have just calculated is distinct from the confidence intervals that you could obtain from the linear model fitted to each simulated dataset, i.e.
+```{r}
+confint(fitmod)
+```
+In 'real life' we have just one dataset which we analyse, and the confidence intervals produce by e.g. `lm` are based on analytical results for the linear model. If the assumptions underlying this theory hold, the 95\% confidence intervals should contain the true parameter value in 95\% of repetitions, in the long run. If this is the case, we say that the _coverage_ of the confidence interval is attaining its nominal or advertised level (e.g. 95\%).
+
+We will now modify our simulation code in order to empirically assess the coverage of the 95\% confidence interval for the slope parameter. First we have to figure out how to extract the confidence interval limits from our fitted model. To investigate how we can do this, we use the structure function `str` on what `confint` returns:
+```{r}
+str(confint(fitmod))
+```
+This shows that the limits are stored in a 2x2 array. To get the CI limits of slope parameter we can use:
+```{r}
+c(confint(fitmod)[2,1], confint(fitmod)[2,2])
+```
+
+We can now modify and re-run our code. Before the for loop we will set up a second array, `ciArray`, to store the confidence interval limits:
+```{r}
+set.seed(1234)
+nSim <- 10000
+#set up an array to store parameter estimates
+estArray <- array(0, dim=c(nSim,2))
+ciArray <- array(0, dim=c(nSim,2))
+
+for (i in 1:nSim) {
+  #simulate a binary covariate x
+  x <- rbinom(n=n, size=1, prob=0.5)
+  #simulate outcome y
+  y <- 1 + 2*x + rnorm(n, mean=0, sd=3)
+  
+  #analyse simulated data by linear regression
+  fitmod <- lm(y~x)
+  #store estimated coefficients in estArray
+  estArray[i,] <- coefficients(fitmod)
+  #store CI limits
+  ciArray[i,] <- c(confint(fitmod)[2,1], confint(fitmod)[2,2])
+}
+```
+
+To assess the CI coverage, we now need to calculate the proportion of simulations where the 95\% CI included the true slope parameter value of 2. This means that the lower limit is less than 2 and the upper limit is greater than 2. We can calculate this with the following code:
+```{r}
+mean((ciArray[,1]<2) & (ciArray[,2]>2))
+```
+This works because the expression passed to mean is a vector of logical values (TRUE/FALSE), and the mean function applied to this returns the proportion of TRUEs. This proportion is close to 95\%, supporting the theory which would imply that this confidence interval should indeed have coverage 95\% here.
+
+Again this empirical proportion is just an estimate of the coverage. It is an estimate of a proportion from a sample of `nSim` independent Bernoulli trials, and so we could calculate a Monte-Carlo standard error for the coverage estimate using standard theory for infernece for a proportion. See the Morris _et al_ paper for more details about how to calculate Monte-Carlo standard errors for other performance measures.
+
+# Organising code
+
+Like with any programming task, there are many different ways of programming \& organising simulation code. Different people have different preferences for how to program things, often related to how they most easily think of the program logic. As we did here, it is often a good idea to start getting your code working on as simple a setup as possible first. Once this is working as expected, you can expand the code as needed, e.g. adding additional methods, data generation mechanisms, etc.
+
+So far we have written the simulation code using a for loop. When we wanted to increase `nSim`, we could take a number of routes. We could just modify the value of `nSim` in the code. This might be fine if we had decided to stick with the higher value of `nSim`. But if we wanted to try different parameter values in the data generation mechanism, we would want to keep track and store the results of different simulation sets.
+
+One approach to handle this is to use functions. We can write one function which performs the simulations, and then have separate code to analyse and present the results. For our earlier simulation example, we can easily wrap the code into a function which has arguments specifying `nSim`, `n`, and the parameter values for the data generating mechanism (shown below). Recall that when declaring R functions we can specify default values for parameters. At the end of the function we need to create some object that suitably combines whatever results we want to save and return back. A convenient way of doing this is using a list, as shown below:
+
+```{r}
+runSim <- function(nSim=1000, n, b0, b1, resSD) {
+  #set up an array to store parameter estimates
+  estArray <- array(0, dim=c(nSim,2))
+  ciArray <- array(0, dim=c(nSim,2))
+  
+  for (i in 1:nSim) {
+    #simulate a binary covariate x
+    x <- rbinom(n=n, size=1, prob=0.5)
+    #simulate outcome y
+    y <- b0 + b1*x + rnorm(n, mean=0, sd=resSD)
+    
+    #analyse simulated data by linear regression
+    fitmod <- lm(y~x)
+    #store estimated coefficients in estArray
+    estArray[i,] <- coefficients(fitmod)
+    #store CI limits
+    ciArray[i,] <- c(confint(fitmod)[2,1], confint(fitmod)[2,2])
+  }
+  list(estArray=estArray, ciArray=ciArray, nSim=nSim, n=n, b0=b0, b1=b1, resSD=resSD)
+}
+```
+Note that as well as the estimate and CI arrays, we also store the parameter values used in the simulation run. This can be useful for later on when we want to present the results, for example in a table.
+
+Having defined this function it is now very easy to run multiple sets of different simulations with different parameter values:
+```{r}
+set.seed(1234)
+results <- vector("list", 3)
+results[[1]] <- runSim(n=100,b0=1,b1=1,resSD=1)
+results[[2]] <- runSim(n=100,b0=1,b1=1,resSD=10)
+results[[3]] <- runSim(n=100,b0=1,b1=1,resSD=100)
+```
+
+If one had a large number of parameter sets to simulate over, one could write a for loop to iterate over this set, calling `runSim` each iteration.
+
+# Presenting results
+
+There are now many fantastic tools which can help the process of tabulating or plotting results from R, including the [`xtable`](https://cran.r-project.org/package=xtable) package, which given an R matrix will give you LaTeX code to turn it into a table. Since this document is written using RMarkdown, we will make use of the [`knitr`](https://cran.r-project.org/package=knitr) package and its `kable` function. First we need to construct a table containing the results we want to show. For each of our three simulation sets, we will present the mean and empirical standard deviation of the slope estimator, and the coverage of the 95\% confidence interval.
+
+```{r}
+resultsTable <- array(0, dim=c(3,3))
+for (i in 1:3) {
+  #mean of estimates
+  resultsTable[i,1] <- mean(results[[i]]$estArray[,2])
+  #sd of estimates
+  resultsTable[i,2] <- sd(results[[i]]$estArray[,2])
+  #CI coverage
+  resultsTable[i,3] <- 100*mean((results[[i]]$ciArray[,1]<results[[i]]$b1) & (results[[i]]$ciArray[,2]>results[[i]]$b1))
+}
+resultsTable
+```
+
+**Run the preceding code and check `resultsTable` looks the same as above.**
+
+As it stands this results table is pretty useless without knowing the lines of code which generated it. We need some row and column headers:
+```{r}
+row.names(resultsTable) <- rep("", 3)
+for (i in 1:3) {
+  row.names(resultsTable)[i] <- paste("Res. SD ", results[[i]]$resSD, sep="")
+}
+colnames(resultsTable) <- c("Mean slope", "SD of slope", "95% CI coverage")
+```
+
+If we now ask R to print it we obtain:
+```{r}
+resultsTable
+```
+
+Lastly, if we want to output this table nicely into using RMarkdown we can as mentioned use `kable` function in the `knitr` package:
+```{r}
+knitr::kable(resultsTable)
+```
+
+This looks nice, but we really don't need (or want) the results presented to so many decimal places. This can be rectified using the `digits` argument:
+```{r}
+knitr::kable(resultsTable, digits=3)
+```
+
+The beauty of [RMarkdown](https://rmarkdown.rstudio.com/) (and [Sweave](https://en.wikipedia.org/wiki/Sweave)) is that we can write documents which contain a mixture of text, R code, and outputs as required (plots, tables of results), and we can include as much or as little of the code as desired. This makes life a lot easier, avoiding the need to laboriously copy and paste tables of results from e.g. R to Word or LaTeX, and thereby improves reproducibility of analyses.
+
+# Other topics
+
+There are a number of topics that this tutorial has not covered. One is the practice of saving the state of the random number generator at each iteration. This can be useful because if some methods fail (e.g. to converge) for some iterations, you can investigate in more detail by setting the random number generator to the state at the offending iteration(s), re-simulate the dataset, re-fit the model, and then check in detail what is going wrong.
+
+Another increasingly important one is how to set seeds if one is using parallel computing to perform simulation studies. For example, if the analysis of each dataset is computationally intensive and we want to perform 1,000 simulations, it may be desirable to split this into 10 batches of 100 simulations, to be performed by separate processor cores. In this context, as Morris _et al_ note, it is crucial to consider carefully how to to set the random number seed. Their advice is to make use of a separate random number 'stream' for each independent batch. Each stream gives a different sequence of random numbers. One can then set the seed to the same value on each independent run/batch, but with each running using a different stream. In R this can be achieved using the [`rstream`](https://cran.r-project.org/package=rstream) package. See Morris _et al_ for more details.
