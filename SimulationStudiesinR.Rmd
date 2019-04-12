@@ -44,8 +44,6 @@ set.seed(1234)
 
 Before delving into more details, we will setup an initial simple simulation study. We will perform simulations for linear regression, where we know from theory what the statistical properties of the ordinary least squares estimator are. The following code performs our simulation study. After storing values for the number of simulations to perform, the sample size, and an array to store estimates, we then use a for loop to repeatedly simulate data, analyse the data, and store the resulting estimates.
 
-**Read through the following code and check you understand it.**
-
 ```{r}
 #specify number of simulations to perform
 nSim <- 1000
@@ -56,8 +54,8 @@ n <- 20
 estArray <- array(0, dim=c(nSim,2))
 
 for (i in 1:nSim) {
-  #simulate a binary covariate x
-  x <- rbinom(n=n, size=1, prob=0.5)
+  #simulate a normally distributed covariate x
+  x <- rnorm(n=n)
   #simulate outcome y
   y <- 1 + 2*x + rnorm(n, mean=0, sd=3)
   
@@ -77,7 +75,7 @@ The ordinary least squares estimators are unbiased, so these means should be clo
 We can also examine other properties of the estimator. For example, theory says that if the residual errors are normally distributed, the ordinary least squares estimators should be normally distributed in repeated samples. We can informally assess this visually by plotting histograms of the two estimators:
 ```{r}
 hist(estArray[,1], main='Histogram of intercept estimates')
-hist(estArray[,1], main='Histogram of slope estimates')
+hist(estArray[,2], main='Histogram of slope estimates')
 ```
 
 # Random number seeds
@@ -116,8 +114,8 @@ nSim <- 10000
 estArray <- array(0, dim=c(nSim,2))
 
 for (i in 1:nSim) {
-  #simulate a binary covariate x
-  x <- rbinom(n=n, size=1, prob=0.5)
+  #simulate a normally distributed covariate x
+  x <- rnorm(n=n)
   #simulate outcome y
   y <- 1 + 2*x + rnorm(n, mean=0, sd=3)
   
@@ -158,8 +156,8 @@ estArray <- array(0, dim=c(nSim,2))
 ciArray <- array(0, dim=c(nSim,2))
 
 for (i in 1:nSim) {
-  #simulate a binary covariate x
-  x <- rbinom(n=n, size=1, prob=0.5)
+  #simulate a normally distributed covariate x
+  x <- rnorm(n=n)
   #simulate outcome y
   y <- 1 + 2*x + rnorm(n, mean=0, sd=3)
   
@@ -195,8 +193,8 @@ runSim <- function(nSim=1000, n, b0, b1, resSD) {
   ciArray <- array(0, dim=c(nSim,2))
   
   for (i in 1:nSim) {
-    #simulate a binary covariate x
-    x <- rbinom(n=n, size=1, prob=0.5)
+    #simulate a normally distributed covariate x
+    x <- rnorm(n=n)
     #simulate outcome y
     y <- b0 + b1*x + rnorm(n, mean=0, sd=resSD)
     
