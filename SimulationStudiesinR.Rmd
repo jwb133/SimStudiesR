@@ -1,7 +1,7 @@
 ---
 title: "Running simulation studies in R - an introductory tutorial"
 author: "[Jonathan Bartlett](https://thestatsgeek.com)"
-date: "11 April 2019"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
   html_document:
     toc: true
@@ -40,9 +40,25 @@ For much more in depth discussion of the planning side, please see the Morris _a
 set.seed(1234)
 ```
 
-# A very simple simulation study
+# Simulating a single dataset
 
-Before delving into more details, we will setup an initial simple simulation study. We will perform simulations for linear regression, where we know from theory what the statistical properties of the ordinary least squares estimator are. The following code performs our simulation study. After storing values for the number of simulations to perform, the sample size, and an array to store estimates, we then use a for loop to repeatedly simulate data, analyse the data, and store the resulting estimates.
+Before we perform what would normally considered a simulation study, where we repeatedly simulated datasets, we will begin by simulating a single data. We will perform simulations for linear regression, where we know from theory what the statistical properties of the ordinary least squares estimator are. Add the following code to a new R script and run it.
+
+```{r}
+n <- 1000
+x <- runif(n)
+y <- 1+2*x+rnorm(n,mean=0,sd=3)
+```
+
+**Next, add some code to fit the linear regression model with `y` as outcome (dependent variable) and `x` as covariate. Do the results agree with what you would expect from theory, given the way we simulated the data?**
+
+# A simple simulation study
+
+Now we move on to doing a proper simulation study to explore the frequentist properties of linear regression. The following code performs our simulation study. After storing values for the number of simulations to perform, the sample size, and an array to store estimates, we then use a for loop to repeatedly simulate data, analyse the data, and store the resulting estimates.
+
+```{r, echo=FALSE}
+set.seed(1234)
+```
 
 ```{r}
 #specify number of simulations to perform
@@ -55,7 +71,7 @@ estArray <- array(0, dim=c(nSim,2))
 
 for (i in 1:nSim) {
   #simulate a normally distributed covariate x
-  x <- rnorm(n=n)
+  x <- runif(n)
   #simulate outcome y
   y <- 1 + 2*x + rnorm(n, mean=0, sd=3)
   
