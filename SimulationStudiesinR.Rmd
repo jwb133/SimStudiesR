@@ -112,11 +112,11 @@ You should find that you obtain identical means to those shown earlier. This is 
 
 We now return to the question of simulation or Monte-Carlo error in our estimates. The mean of each of the two coefficients was the 'sample' mean of 1,000 estimates. We can estimate the standard error of the slope estimates by calculating an estimate of the standard deviation of the estimates and dividing by `sqrt(nSim)`:
 ```{r}
-sd(estArray[,2]/sqrt(nSim))
+sd(estArray[,2])/sqrt(nSim)
 ```
 Provided `nSim` is reasonably large, even if the estimator is not normally distributed (which here it is), by virtue of the central limit theorem we can construct a 95\% confidence interval for the true value that the estimator is unbiasedly estimating by the sample mean plus or minus 1.96 standard errors:
 ```{r}
-c(mean(estArray[,2]) - 1.96*sd(estArray[,2]/sqrt(nSim)), mean(estArray[,2]) + 1.96*sd(estArray[,2]/sqrt(nSim)))
+c(mean(estArray[,2]) - 1.96*sd(estArray[,2])/sqrt(nSim), mean(estArray[,2]) + 1.96*sd(estArray[,2])/sqrt(nSim))
 ```
 This confidence interval includes the true value of 2, but the interval is quite wide, so we cannot really be that confident on the basis of just these simulation results that the estimator is unbiased. If we wanted more convincing evidence, we should increase `nSim`, and possibly also use a 99\% confidence interval.
 
@@ -141,7 +141,7 @@ for (i in 1:nSim) {
   estArray[i,] <- coefficients(fitmod)
 }
 
-c(mean(estArray[,2]) - 1.96*sd(estArray[,2]/sqrt(nSim)), mean(estArray[,2]) + 1.96*sd(estArray[,2]/sqrt(nSim)))
+c(mean(estArray[,2]) - 1.96*sd(estArray[,2])/sqrt(nSim), mean(estArray[,2]) + 1.96*sd(estArray[,2])/sqrt(nSim))
 ```
 
 Our confidence interval is now (as it should be) narrower, and happily includes the value of 2. We have stronger evidence supporting that the slope estimator is unbiased.

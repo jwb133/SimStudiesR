@@ -166,7 +166,7 @@ pre code {
 
 <h1 class="title toc-ignore">Running simulation studies in R - an introductory tutorial</h1>
 <h4 class="author"><a href="https://thestatsgeek.com">Jonathan Bartlett</a></h4>
-<h4 class="date">16 April, 2021</h4>
+<h4 class="date">23 April, 2021</h4>
 
 </div>
 
@@ -259,10 +259,10 @@ for (i in 1:nSim) {
 <div id="monte-carlo-error" class="section level1" number="6">
 <h1 number="6"><span class="header-section-number">6</span> Monte-Carlo error</h1>
 <p>We now return to the question of simulation or Monte-Carlo error in our estimates. The mean of each of the two coefficients was the ‘sample’ mean of 1,000 estimates. We can estimate the standard error of the slope estimates by calculating an estimate of the standard deviation of the estimates and dividing by <code>sqrt(nSim)</code>:</p>
-<pre class="r"><code>sd(estArray[,2]/sqrt(nSim))</code></pre>
+<pre class="r"><code>sd(estArray[,2])/sqrt(nSim)</code></pre>
 <pre><code>## [1] 0.07471551</code></pre>
 <p>Provided <code>nSim</code> is reasonably large, even if the estimator is not normally distributed (which here it is), by virtue of the central limit theorem we can construct a 95% confidence interval for the true value that the estimator is unbiasedly estimating by the sample mean plus or minus 1.96 standard errors:</p>
-<pre class="r"><code>c(mean(estArray[,2]) - 1.96*sd(estArray[,2]/sqrt(nSim)), mean(estArray[,2]) + 1.96*sd(estArray[,2]/sqrt(nSim)))</code></pre>
+<pre class="r"><code>c(mean(estArray[,2]) - 1.96*sd(estArray[,2])/sqrt(nSim), mean(estArray[,2]) + 1.96*sd(estArray[,2])/sqrt(nSim))</code></pre>
 <pre><code>## [1] 1.976306 2.269191</code></pre>
 <p>This confidence interval includes the true value of 2, but the interval is quite wide, so we cannot really be that confident on the basis of just these simulation results that the estimator is unbiased. If we wanted more convincing evidence, we should increase <code>nSim</code>, and possibly also use a 99% confidence interval.</p>
 <p><strong>Add the preceding lines which calculate the 95% confidence interval for the slope parameter, and re-run your simulation study with <code>nSim &lt;- 10000</code>.</strong></p>
@@ -284,7 +284,7 @@ for (i in 1:nSim) {
   estArray[i,] &lt;- coefficients(fitmod)
 }
 
-c(mean(estArray[,2]) - 1.96*sd(estArray[,2]/sqrt(nSim)), mean(estArray[,2]) + 1.96*sd(estArray[,2]/sqrt(nSim)))</code></pre>
+c(mean(estArray[,2]) - 1.96*sd(estArray[,2])/sqrt(nSim), mean(estArray[,2]) + 1.96*sd(estArray[,2])/sqrt(nSim))</code></pre>
 <pre><code>## [1] 1.989255 2.017896</code></pre>
 <p>Our confidence interval is now (as it should be) narrower, and happily includes the value of 2. We have stronger evidence supporting that the slope estimator is unbiased.</p>
 </div>
